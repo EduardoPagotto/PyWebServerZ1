@@ -10,6 +10,10 @@ Update on 20180410
 #pylint: disable=W0703
 #pylint: disable=R0913
 
+import socket
+
+from datetime import datetime
+
 from flask import Flask, render_template, jsonify, json, request
 
 application = Flask(__name__)
@@ -30,8 +34,12 @@ application = Flask(__name__)
 #     lista.append(dado2)
 #     return lista
 
+serial = 0
 
-dado = {'nome':'Eduardo', 'sexo':True, 'idade':47}
+def le_dados(arquivo):
+    with open(arquivo) as json_file:  
+        data = json.load(json_file)
+        return data
 
 @application.route('/')
 def api_root():
@@ -63,6 +71,54 @@ def api_root():
 #     except Exception as e:
 #         print('Error is ' + str(e))
 #         return jsonify(status='ERROR', message=str(e))
+
+@application.route('/begin', methods=['POST'])
+def begin():
+    if request.method=='POST':
+
+        global serial
+        serial += 1
+
+        auth = request.headers['Authorization']
+        host = request.headers['host']
+        payload = request.get_json(silent=True)
+
+        opp = {}
+        batch = {}
+        scanner = {}
+        opp['command'] = 'BEGIN'
+        opp['host'] = host
+        opp['payload'] = payload
+        opp['batch'] = batch
+        opp['scanner'] = scanner
+        batch['id'] = 'OBJETO_ID_UNICO'
+        batch['path'] = '/{host:}_{agora:%Y%m%d%H%M%S}_{seq:04d}'.format(host=socket.gethostname(),
+                                                                         agora=datetime.today(),
+                                                                         seq=serial)
+        batch['docs'] = []
+        scanner['path'] = '/home/pagotto/images'
+
+        # TODO: criar diretorio
+
+        # TODO: Enviar comando para scanner comecar a aquisicao de imagens
+
+        # TODO: envia opp para fila de processamento
+
+        response = application.response_class(
+            response=json.dumps(opp),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+
+        # #erro
+        # response = application.response_class(
+        #     response=json.dumps(dado),
+        #     status=404,
+        #     mimetype='application/json'
+        # )
+    else:
+        return("Erro")
 
 @application.route('/teste_put', methods=['PUT'])
 def teste_put():
